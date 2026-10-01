@@ -283,6 +283,7 @@
     }
     .btn-map { background: var(--sage); }
     .btn-num { background: #4a7c9b; }
+    .btn-dir { background: #9b6b4a; }  /* new direction button color */
 
     .ai-badge {
       display: inline-block;
@@ -334,6 +335,26 @@
       font-size: 0.9rem;
     }
     .footer .love { margin-top: 10px; font-size: 0.78rem; color: #9aab98; }
+
+    /* Location button */
+    .loc-btn {
+      background: rgba(44, 62, 45, 0.85);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .loc-btn:active { opacity: 0.8; }
+    .loc-btn small { font-weight: 400; opacity: 0.8; }
   </style>
 </head>
 <body>
@@ -363,6 +384,10 @@
       </div>
 
       <input type="text" id="fromPlace" placeholder="From where? (e.g. Kolkata, Delhi, Mumbai...)" autocomplete="off" />
+      <button type="button" class="loc-btn" onclick="detectLocation()">
+        📍 Use my current location <small>(auto-fill From)</small>
+      </button>
+
       <input type="text" id="destination" placeholder="Where to go? (e.g. Manali, Paris, Bali...)" autocomplete="off" />
 
       <div class="budget-label">Choose your budget</div>
@@ -445,6 +470,8 @@
     const DEFAULT_GROQ_KEY = "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";
 
     let selectedBudget = "medium";
+    let currentLat = null;
+    let currentLon = null;
 
     function selectBudget(btn) {
       document.querySelectorAll(".budget-btn").forEach(b => b.classList.remove("active"));
@@ -465,6 +492,49 @@
 
     function getGroqKey() {
       return localStorage.getItem("groq_api_key") || DEFAULT_GROQ_KEY;
+    }
+
+    // --- Location detection ---
+    function detectLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+      }
+      const btn = document.querySelector('.loc-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Detecting…';
+      btn.disabled = true;
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          currentLat = position.coords.latitude;
+          currentLon = position.coords.longitude;
+          try {
+            // Reverse geocode using open API (BigDataCloud free, no key)
+            const res = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLat}&longitude=${currentLon}&localityLanguage=en`
+            );
+            const data = await res.json();
+            // Use city/locality or fallback to lat,lon
+            let place = data.city || data.locality || data.principalSubdivision || '';
+            if (place) {
+              document.getElementById('fromPlace').value = place;
+            } else {
+              document.getElementById('fromPlace').value = currentLat.toFixed(4) + ', ' + currentLon.toFixed(4);
+            }
+          } catch (e) {
+            document.getElementById('fromPlace').value = currentLat.toFixed(4) + ', ' + currentLon.toFixed(4);
+          }
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        },
+        (error) => {
+          alert("Unable to get location: " + error.message);
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
     }
 
     function onProviderChange() {
@@ -844,6 +914,11 @@ Rules:
         const imgUrl = destinationImageUrl(destination);
         const title = (fromPlace ? fromPlace + " → " : "") + destination;
 
+        // Direction base: uses current location if available, else destination only
+        const dirBase = currentLat && currentLon
+          ? `https://www.google.com/maps/dir/${currentLat},${currentLon}/`
+          : `https://www.google.com/maps/dir//`;
+
         let html = `
           <div class="card">
             <div class="dest-img-wrap">
@@ -863,48 +938,62 @@ Rules:
 
           <div class="card local-section">
             <h3>📞 Important Local Places</h3>
-            <p class="local-note">Map = location · Number = find phone & call</p>
+            <p class="local-note">Map = location · Number = phone · Dir = directions from you</p>
 
             <div class="local-item">
               <div class="info"><div class="name">Bike / Scooter Rental</div><div class="type">Two-wheeler hire</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+bike+rental" target="_blank">Map</a>
-                <a class="btn-num" href="https://www.google.com/search?q=${q}+bike+rental+phone+number" target="_blank">Number</a>
+                <a class="btn-dir" href="${dirBase}${q}+bike+rental" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+bike+rental+phone+number" target="_blank">Num</a>
               </div>
             </div>
             <div class="local-item">
               <div class="info"><div class="name">Cheap Hotels / Hostels</div><div class="type">Budget stays</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+cheap+hotel" target="_blank">Map</a>
-                <a class="btn-num" href="https://www.google.com/search?q=${q}+cheap+hotel+phone+number" target="_blank">Number</a>
+                <a class="btn-dir" href="${dirBase}${q}+cheap+hotel" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+cheap+hotel+phone+number" target="_blank">Num</a>
               </div>
             </div>
             <div class="local-item">
               <div class="info"><div class="name">Medicine Shop</div><div class="type">Pharmacy</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+pharmacy" target="_blank">Map</a>
-                <a class="btn-num" href="https://www.google.com/search?q=${q}+pharmacy+phone+number" target="_blank">Number</a>
+                <a class="btn-dir" href="${dirBase}${q}+pharmacy" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+pharmacy+phone+number" target="_blank">Num</a>
               </div>
             </div>
             <div class="local-item">
               <div class="info"><div class="name">Local Market</div><div class="type">Shopping</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+local+market" target="_blank">Map</a>
-                <a class="btn-num" href="https://www.google.com/search?q=${q}+local+market+phone+number" target="_blank">Number</a>
+                <a class="btn-dir" href="${dirBase}${q}+local+market" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+local+market+phone+number" target="_blank">Num</a>
               </div>
             </div>
             <div class="local-item">
               <div class="info"><div class="name">Good Food Places</div><div class="type">Restaurants</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+best+restaurants" target="_blank">Map</a>
-                <a class="btn-num" href="https://www.google.com/search?q=${q}+restaurant+phone+number" target="_blank">Number</a>
+                <a class="btn-dir" href="${dirBase}${q}+best+restaurants" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+restaurant+phone+number" target="_blank">Num</a>
               </div>
             </div>
             <div class="local-item">
               <div class="info"><div class="name">Petrol Pump</div><div class="type">Fuel stations</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+petrol+pump" target="_blank">Map</a>
-                <a class="btn-num" href="https://www.google.com/search?q=${q}+petrol+pump+phone+number" target="_blank">Number</a>
+                <a class="btn-dir" href="${dirBase}${q}+petrol+pump" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+petrol+pump+phone+number" target="_blank">Num</a>
+              </div>
+            </div>
+            <div class="local-item">
+              <div class="info"><div class="name">Police Station</div><div class="type">Emergency</div></div>
+              <div class="local-btns">
+                <a class="btn-map" href="${mapsBase}${q}+police+station" target="_blank">Map</a>
+                <a class="btn-dir" href="${dirBase}${q}+police+station" target="_blank">Dir</a>
+                <a class="btn-num" href="https://www.google.com/search?q=${q}+police+station+phone+number" target="_blank">Num</a>
               </div>
             </div>
           </div>
