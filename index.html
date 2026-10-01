@@ -412,7 +412,7 @@
     }
     .bmc-note { font-size: 0.72rem; color: var(--muted); margin-top: 10px; }
 
-    /* ===== PLACE INPUT SUGGESTION ===== */
+    /* ===== AUTOCOMPLETE SUGGESTIONS ===== */
     .input-wrapper { position: relative; }
     .suggest-box {
       position: absolute;
@@ -442,6 +442,42 @@
     .suggest-item:hover, .suggest-item:active { background: var(--sage-light); }
     .suggest-item .sug-name { font-weight: 600; }
     .suggest-item .sug-region { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+
+    /* Location button + coord badge */
+    .loc-btn {
+      background: rgba(44, 62, 45, 0.85);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .loc-btn:active { opacity: 0.8; }
+    .loc-btn small { font-weight: 400; opacity: 0.8; }
+    .loc-btn:disabled { opacity: 0.6; cursor: wait; }
+
+    .coord-badge {
+      font-size: 0.7rem;
+      background: rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 10px;
+      padding: 7px 10px;
+      margin-top: 4px;
+      color: white;
+      display: none;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .coord-badge.show { display: block; }
+    .coord-badge b { color: #ffe9a8; }
   </style>
 </head>
 <body>
@@ -499,7 +535,7 @@
           <small>Comfort+</small>
         </button>
       </div>
-      
+
       <div class="row">
         <select id="days">
           <option value="2">2 Days</option>
@@ -566,7 +602,7 @@
         </svg>
         Follow on Instagram
       </a>
-      <a class="social-link coffee-link" href="https://www.buymeacoffee.com/anabil" target="_blank" rel="noopener">
+      <a class="social-link coffee-link" href="upi://pay?pa=anabild651-1@oksbi&pn=Anabil%20Sneha%20De&cu=INR&tn=Buy%20me%20a%20coffee" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
           <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
@@ -590,23 +626,13 @@
     let currentLon = null;
     let currentAccuracy = null;
 
-    // Cached coordinates for the current "from" and "destination" text values
     let fromCoords = null;   // { lat, lon }
     let destCoords = null;   // { lat, lon }
 
     /* ============================================================
        TRAVEL FEASIBILITY SETTINGS
        ============================================================ */
-    // Approximate maximum one-way travel distance (in km) per "day of travel"
-    // based on typical Indian travel speeds:
-    //   • Train (avg 55 km/h, ~8h travel/day) ≈ 450 km/day
-    //   • Bus (avg 45 km/h, ~8h travel/day)  ≈ 360 km/day
-    //   • Car (avg 60 km/h, ~8h travel/day)  ≈ 480 km/day
-    // We use 400 km as a safe average. Round-trip = 2 × one-way, so
-    // a 2-day trip can handle roughly 400 km one-way (400 go + 400 return
-    // already burns 2 full days). If it takes more than ~50% of the trip
-    // in travel, the plan is impractical.
-    const KM_PER_TRAVEL_DAY = 400;      // one-way distance one full travel day can cover
+    const KM_PER_TRAVEL_DAY = 400;      // one-way km a full travel day covers
     const TRAVEL_DAY_RATIO_LIMIT = 0.5; // travel must be < 50% of total days
 
     /* ============================================================
@@ -629,7 +655,6 @@
         suggestTimers[inputId] = setTimeout(() => fetchSuggestions(q, box, onPick), 350);
       });
 
-      // Close on outside click
       document.addEventListener("click", (e) => {
         if (!input.contains(e.target) && !box.contains(e.target)) {
           box.classList.remove("show");
@@ -640,9 +665,7 @@
     async function fetchSuggestions(query, box, onPick) {
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`;
-        const res = await fetch(url, {
-          headers: { "Accept": "application/json" }
-        });
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
         const data = await res.json();
         if (!data || data.length === 0) {
           box.classList.remove("show");
@@ -688,8 +711,6 @@
       destCoords = { lat, lon };
     });
 
-    // If the user types manually without picking a suggestion, we need coords.
-    // Resolve them on-the-fly at search time via Nominatim.
     async function resolveCoords(placeText) {
       if (!placeText) return null;
       try {
@@ -705,7 +726,6 @@
       return null;
     }
 
-    // Haversine distance in km
     function haversineKm(a, b) {
       if (!a || !b) return null;
       const R = 6371;
@@ -843,7 +863,7 @@
 
     function quickSearch(place) {
       document.getElementById("destination").value = place;
-      destCoords = null; // will be resolved on search
+      destCoords = null;
       searchTrip();
     }
 
@@ -862,19 +882,13 @@
     /* ============================================================
        FEASIBILITY CHECK
        ============================================================ */
-    // Returns { feasible: bool, distanceKm, travelDaysNeeded, message }
     function checkFeasibility(distanceKm, days) {
       if (distanceKm == null) {
         return { feasible: true, distanceKm: null, travelDaysNeeded: 0, message: "" };
       }
-      // One full travel day covers ~KM_PER_TRAVEL_DAY one-way.
-      // Round-trip = 2 × one-way distance.
-      const oneWayDays = distanceKm / KM_PER_TRAVEL_DAY;   // days needed each way
-      const roundTripDays = oneWayDays * 2;                // total travel days
-
-      // Also require travel to be < TRAVEL_DAY_RATIO_LIMIT of total days
+      const oneWayDays = distanceKm / KM_PER_TRAVEL_DAY;
+      const roundTripDays = oneWayDays * 2;
       const ratio = roundTripDays / days;
-
       const feasible = ratio < TRAVEL_DAY_RATIO_LIMIT;
 
       let message = "";
@@ -1197,7 +1211,6 @@ Rules:
 
       showLoading("Checking your trip…");
 
-      // ---- Resolve coordinates if not cached ----
       try {
         if (!fromCoords && fromPlace) {
           fromCoords = await resolveCoords(fromPlace);
@@ -1209,7 +1222,6 @@ Rules:
         console.warn("Geocoding issue:", e);
       }
 
-      // ---- Feasibility check ----
       let travelNote = "";
       if (!forceContinue && fromCoords && destCoords) {
         const distanceKm = haversineKm(fromCoords, destCoords);
