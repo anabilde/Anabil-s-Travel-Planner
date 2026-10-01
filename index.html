@@ -71,6 +71,7 @@
       cursor: pointer;
     }
     .main-btn:active { opacity: 0.88; }
+    .main-btn:disabled { opacity: 0.6; cursor: wait; }
 
     .budget-label {
       font-size: 0.8rem;
@@ -322,7 +323,49 @@
       line-height: 1.4;
     }
 
-    .footer { text-align: center; padding: 28px 16px 16px; }
+    /* ===== FEASIBILITY WARNING ===== */
+    .warn-box {
+      background: #fff7e6;
+      border: 1.5px solid #f2c94c;
+      color: #8a6d1a;
+      border-radius: 14px;
+      padding: 14px 15px;
+      margin-bottom: 14px;
+      font-size: 0.86rem;
+      line-height: 1.5;
+      box-shadow: 0 3px 12px rgba(242, 201, 76, 0.2);
+    }
+    .warn-box .warn-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #a17c0f;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .warn-box .warn-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .warn-box .warn-actions button {
+      flex: 1;
+      min-width: 120px;
+      padding: 11px 12px;
+      border-radius: 11px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      border: none;
+    }
+    .warn-btn-change { background: #f2c94c; color: #5a4a10; }
+    .warn-btn-continue { background: #fff; color: #8a6d1a; border: 1.5px solid #f2c94c !important; }
+    .warn-box .dist-line { margin-top: 4px; }
+
+    /* ===== FOOTER SOCIALS ===== */
+    .footer { text-align: center; padding: 28px 16px 20px; }
     .footer .dev { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
     .footer .dev strong { color: var(--sage-dark); font-weight: 600; }
     .footer .phone {
@@ -335,40 +378,70 @@
     }
     .footer .love { margin-top: 10px; font-size: 0.78rem; color: #9aab98; }
 
-    .loc-btn {
-      background: rgba(44, 62, 45, 0.85);
-      border: 1px solid rgba(255,255,255,0.5);
-      color: white;
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
+    .social-row {
       display: flex;
-      align-items: center;
       justify-content: center;
-      gap: 5px;
-      width: 100%;
-      margin-top: 4px;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+      flex-wrap: wrap;
     }
-    .loc-btn:active { opacity: 0.8; }
-    .loc-btn small { font-weight: 400; opacity: 0.8; }
-    .loc-btn:disabled { opacity: 0.6; cursor: wait; }
+    .social-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 9px 15px;
+      border-radius: 22px;
+      transition: transform 0.15s;
+    }
+    .social-link:active { transform: scale(0.96); }
+    .social-link svg { flex-shrink: 0; }
 
-    .coord-badge {
-      font-size: 0.7rem;
-      background: rgba(255,255,255,0.25);
-      border: 1px solid rgba(255,255,255,0.5);
-      border-radius: 10px;
-      padding: 7px 10px;
-      margin-top: 4px;
+    .insta-link {
       color: white;
-      display: none;
-      line-height: 1.4;
-      word-break: break-all;
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      box-shadow: 0 3px 12px rgba(188, 24, 136, 0.3);
     }
-    .coord-badge.show { display: block; }
-    .coord-badge b { color: #ffe9a8; }
+    .coffee-link {
+      color: #4a2f10;
+      background: #ffdd00;
+      box-shadow: 0 3px 12px rgba(255, 221, 0, 0.4);
+    }
+    .bmc-note { font-size: 0.72rem; color: var(--muted); margin-top: 10px; }
+
+    /* ===== PLACE INPUT SUGGESTION ===== */
+    .input-wrapper { position: relative; }
+    .suggest-box {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border-radius: 12px;
+      margin-top: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 50;
+      display: none;
+      border: 1px solid var(--border);
+    }
+    .suggest-box.show { display: block; }
+    .suggest-item {
+      padding: 11px 14px;
+      font-size: 0.85rem;
+      color: var(--text);
+      cursor: pointer;
+      border-bottom: 1px solid #f0f4ef;
+      line-height: 1.35;
+    }
+    .suggest-item:last-child { border-bottom: none; }
+    .suggest-item:hover, .suggest-item:active { background: var(--sage-light); }
+    .suggest-item .sug-name { font-weight: 600; }
+    .suggest-item .sug-region { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
   </style>
 </head>
 <body>
@@ -397,13 +470,19 @@
         <div class="help-links" id="helpLinks"></div>
       </div>
 
-      <input type="text" id="fromPlace" placeholder="From where? (e.g. Kolkata, Delhi, Mumbai...)" autocomplete="off" />
+      <div class="input-wrapper">
+        <input type="text" id="fromPlace" placeholder="From where? (e.g. Kolkata, Delhi, Mumbai...)" autocomplete="off" />
+        <div class="suggest-box" id="fromSuggest"></div>
+      </div>
       <button type="button" class="loc-btn" id="locBtn" onclick="detectLocation()">
         📍 Use my current location <small>(auto-fill From)</small>
       </button>
       <div class="coord-badge" id="coordBadge"></div>
 
-      <input type="text" id="destination" placeholder="Where to go? (e.g. Manali, Paris, Bali...)" autocomplete="off" />
+      <div class="input-wrapper">
+        <input type="text" id="destination" placeholder="Where to go? (e.g. Manali, Paris, Bali...)" autocomplete="off" />
+        <div class="suggest-box" id="destSuggest"></div>
+      </div>
 
       <div class="budget-label">Choose your budget</div>
       <div class="budget-btns">
@@ -432,7 +511,7 @@
           <option value="8">8 Days</option>
           <option value="10">10 Days</option>
         </select>
-        <button class="main-btn" onclick="searchTrip()">Plan My Trip</button>
+        <button class="main-btn" id="planBtn" onclick="searchTrip()">Plan My Trip</button>
       </div>
     </div>
   </header>
@@ -477,6 +556,29 @@
       Developed by <strong>Anabil Sneha De</strong><br>
       <a class="phone" href="tel:8902574835">📞 8902574835</a>
     </div>
+
+    <div class="social-row">
+      <a class="social-link insta-link" href="https://www.instagram.com/instabydeep.jpg/" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+        </svg>
+        Follow on Instagram
+      </a>
+      <a class="social-link coffee-link" href="https://www.buymeacoffee.com/anabil" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+          <line x1="6" y1="1" x2="6" y2="4"></line>
+          <line x1="10" y1="1" x2="10" y2="4"></line>
+          <line x1="14" y1="1" x2="14" y2="4"></line>
+        </svg>
+        Buy me a coffee
+      </a>
+    </div>
+    <div class="bmc-note">☕ Your support keeps this planner free for everyone</div>
+
     <div class="love">Made with ♥ for India</div>
   </div>
 
@@ -484,20 +586,147 @@
     const DEFAULT_GROQ_KEY = "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";
 
     let selectedBudget = "medium";
-    // Store precise coordinates separately from the display text
     let currentLat = null;
     let currentLon = null;
     let currentAccuracy = null;
 
+    // Cached coordinates for the current "from" and "destination" text values
+    let fromCoords = null;   // { lat, lon }
+    let destCoords = null;   // { lat, lon }
+
+    /* ============================================================
+       TRAVEL FEASIBILITY SETTINGS
+       ============================================================ */
+    // Approximate maximum one-way travel distance (in km) per "day of travel"
+    // based on typical Indian travel speeds:
+    //   • Train (avg 55 km/h, ~8h travel/day) ≈ 450 km/day
+    //   • Bus (avg 45 km/h, ~8h travel/day)  ≈ 360 km/day
+    //   • Car (avg 60 km/h, ~8h travel/day)  ≈ 480 km/day
+    // We use 400 km as a safe average. Round-trip = 2 × one-way, so
+    // a 2-day trip can handle roughly 400 km one-way (400 go + 400 return
+    // already burns 2 full days). If it takes more than ~50% of the trip
+    // in travel, the plan is impractical.
+    const KM_PER_TRAVEL_DAY = 400;      // one-way distance one full travel day can cover
+    const TRAVEL_DAY_RATIO_LIMIT = 0.5; // travel must be < 50% of total days
+
+    /* ============================================================
+       AUTOCOMPLETE / GEOCODING (Nominatim - OpenStreetMap, free)
+       ============================================================ */
+    let suggestTimers = {};
+
+    function attachAutocomplete(inputId, suggestId, onPick) {
+      const input = document.getElementById(inputId);
+      const box = document.getElementById(suggestId);
+
+      input.addEventListener("input", () => {
+        const q = input.value.trim();
+        if (suggestTimers[inputId]) clearTimeout(suggestTimers[inputId]);
+        if (q.length < 2) {
+          box.classList.remove("show");
+          box.innerHTML = "";
+          return;
+        }
+        suggestTimers[inputId] = setTimeout(() => fetchSuggestions(q, box, onPick), 350);
+      });
+
+      // Close on outside click
+      document.addEventListener("click", (e) => {
+        if (!input.contains(e.target) && !box.contains(e.target)) {
+          box.classList.remove("show");
+        }
+      });
+    }
+
+    async function fetchSuggestions(query, box, onPick) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, {
+          headers: { "Accept": "application/json" }
+        });
+        const data = await res.json();
+        if (!data || data.length === 0) {
+          box.classList.remove("show");
+          return;
+        }
+        box.innerHTML = data.map((d) => {
+          const name = d.name || d.display_name.split(",")[0];
+          const region = d.display_name;
+          return `<div class="suggest-item" data-lat="${d.lat}" data-lon="${d.lon}">
+            <div class="sug-name">${escapeHtml(name)}</div>
+            <div class="sug-region">${escapeHtml(region)}</div>
+          </div>`;
+        }).join("");
+        box.classList.add("show");
+
+        box.querySelectorAll(".suggest-item").forEach(el => {
+          el.addEventListener("click", () => {
+            const lat = parseFloat(el.dataset.lat);
+            const lon = parseFloat(el.dataset.lon);
+            const name = el.querySelector(".sug-name").textContent;
+            onPick(name, lat, lon);
+            box.classList.remove("show");
+          });
+        });
+      } catch (e) {
+        console.warn("Autocomplete failed:", e);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      }[c]));
+    }
+
+    attachAutocomplete("fromPlace", "fromSuggest", (name, lat, lon) => {
+      document.getElementById("fromPlace").value = name;
+      fromCoords = { lat, lon };
+    });
+
+    attachAutocomplete("destination", "destSuggest", (name, lat, lon) => {
+      document.getElementById("destination").value = name;
+      destCoords = { lat, lon };
+    });
+
+    // If the user types manually without picking a suggestion, we need coords.
+    // Resolve them on-the-fly at search time via Nominatim.
+    async function resolveCoords(placeText) {
+      if (!placeText) return null;
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(placeText)}`;
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        const data = await res.json();
+        if (data && data[0]) {
+          return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        }
+      } catch (e) {
+        console.warn("Geocode failed for", placeText, e);
+      }
+      return null;
+    }
+
+    // Haversine distance in km
+    function haversineKm(a, b) {
+      if (!a || !b) return null;
+      const R = 6371;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLon = (b.lon - a.lon) * Math.PI / 180;
+      const lat1 = a.lat * Math.PI / 180;
+      const lat2 = b.lat * Math.PI / 180;
+      const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+      return 2 * R * Math.asin(Math.sqrt(x));
+    }
+
+    /* ============================================================
+       LOCATION
+       ============================================================ */
     function selectBudget(btn) {
       document.querySelectorAll(".budget-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       selectedBudget = btn.getAttribute("data-budget");
     }
 
-    function getProvider() {
-      return document.getElementById("provider").value;
-    }
+    function getProvider() { return document.getElementById("provider").value; }
 
     function getKeyStorageName() {
       const p = getProvider();
@@ -510,7 +739,6 @@
       return localStorage.getItem("groq_api_key") || DEFAULT_GROQ_KEY;
     }
 
-    // ---------- PRECISE LOCATION CAPTURE ----------
     function detectLocation() {
       if (!navigator.geolocation) {
         alert("Geolocation is not supported by your browser");
@@ -527,18 +755,16 @@
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          // Capture exact coordinates (full precision)
           currentLat = position.coords.latitude;
           currentLon = position.coords.longitude;
           currentAccuracy = position.coords.accuracy;
+          fromCoords = { lat: currentLat, lon: currentLon };
 
-          // Always show the exact coordinates badge
           badge.innerHTML =
             `📌 <b>Lat:</b> ${currentLat.toFixed(6)} &nbsp; <b>Lon:</b> ${currentLon.toFixed(6)}` +
             `<br>🎯 Accuracy: ~${Math.round(currentAccuracy)} m`;
           badge.classList.add('show');
 
-          // Try reverse geocode for a friendly name in the From field
           let displayName = `${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`;
           try {
             const res = await fetch(
@@ -551,17 +777,10 @@
             if (data.principalSubdivision && data.principalSubdivision !== data.city) {
               parts.push(data.principalSubdivision);
             }
-            if (parts.length > 0) {
-              displayName = parts.join(', ');
-            }
-          } catch (e) {
-            // keep coordinate fallback
-          }
+            if (parts.length > 0) displayName = parts.join(', ');
+          } catch (e) { /* keep coords fallback */ }
 
-          // Put the friendly name (or coords) in the input.
-          // IMPORTANT: directions still use exact currentLat/currentLon.
           document.getElementById('fromPlace').value = displayName;
-
           btn.innerHTML = originalHtml;
           btn.disabled = false;
         },
@@ -574,21 +793,14 @@
           btn.innerHTML = originalHtml;
           btn.disabled = false;
         },
-        {
-          enableHighAccuracy: true,   // force GPS-level precision
-          timeout: 15000,
-          maximumAge: 0               // always get fresh position
-        }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     }
 
-    // Helper: build a Google Maps directions URL that uses exact GPS if available
     function directionsUrl(destinationQuery) {
       if (currentLat !== null && currentLon !== null) {
-        // Use precise coordinates as the origin
         return `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLon}&destination=${encodeURIComponent(destinationQuery)}&travelmode=driving`;
       }
-      // No location yet → let Google Maps use the user's current location
       return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationQuery)}&travelmode=driving`;
     }
 
@@ -623,10 +835,7 @@
       const p = getProvider();
       if (p === "offline") return;
       const key = document.getElementById("apiKey").value.trim();
-      if (!key) {
-        alert("Please paste the API key first");
-        return;
-      }
+      if (!key) { alert("Please paste the API key first"); return; }
       localStorage.setItem(getKeyStorageName(), key);
       onProviderChange();
       alert("Key saved on this device!");
@@ -634,6 +843,7 @@
 
     function quickSearch(place) {
       document.getElementById("destination").value = place;
+      destCoords = null; // will be resolved on search
       searchTrip();
     }
 
@@ -649,18 +859,66 @@
       document.getElementById("loading").style.display = "none";
     }
 
+    /* ============================================================
+       FEASIBILITY CHECK
+       ============================================================ */
+    // Returns { feasible: bool, distanceKm, travelDaysNeeded, message }
+    function checkFeasibility(distanceKm, days) {
+      if (distanceKm == null) {
+        return { feasible: true, distanceKm: null, travelDaysNeeded: 0, message: "" };
+      }
+      // One full travel day covers ~KM_PER_TRAVEL_DAY one-way.
+      // Round-trip = 2 × one-way distance.
+      const oneWayDays = distanceKm / KM_PER_TRAVEL_DAY;   // days needed each way
+      const roundTripDays = oneWayDays * 2;                // total travel days
+
+      // Also require travel to be < TRAVEL_DAY_RATIO_LIMIT of total days
+      const ratio = roundTripDays / days;
+
+      const feasible = ratio < TRAVEL_DAY_RATIO_LIMIT;
+
+      let message = "";
+      if (!feasible) {
+        const neededDays = Math.ceil(roundTripDays / TRAVEL_DAY_RATIO_LIMIT);
+        message = `This destination is roughly <b>${Math.round(distanceKm).toLocaleString()} km</b> away. ` +
+                  `Round-trip travel alone will eat up about <b>${roundTripDays.toFixed(1)} day(s)</b> ` +
+                  `out of your <b>${days} day(s)</b>. You'll barely have time to enjoy the place. ` +
+                  `<br><br>👉 We recommend at least <b>${neededDays} days</b> for this trip.`;
+      }
+      return { feasible, distanceKm, travelDaysNeeded: roundTripDays, message };
+    }
+
+    function renderFeasibilityWarning(info, onContinue) {
+      const results = document.getElementById("results");
+      results.innerHTML = `
+        <div class="warn-box">
+          <div class="warn-title">⚠️ Not enough days for this trip</div>
+          <div class="dist-line">${info.message}</div>
+          <div class="warn-actions">
+            <button class="warn-btn-change" onclick="focusDays()">🔁 Change days</button>
+            <button class="warn-btn-continue" id="continueAnywayBtn">Continue anyway</button>
+          </div>
+        </div>
+      `;
+      results.style.display = "block";
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      document.getElementById("continueAnywayBtn").addEventListener("click", onContinue);
+    }
+
+    function focusDays() {
+      document.getElementById("days").focus();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    /* ============================================================
+       IMAGES
+       ============================================================ */
     function dayImageUrl(destination, dayNum) {
       const tags = [
-        "landscape,travel",
-        "city,sightseeing",
-        "nature,mountains",
-        "temple,culture",
-        "beach,sunset",
-        "food,market",
-        "adventure,outdoor",
-        "hotel,resort",
-        "street,local",
-        "viewpoint,scenery"
+        "landscape,travel","city,sightseeing","nature,mountains","temple,culture",
+        "beach,sunset","food,market","adventure,outdoor","hotel,resort",
+        "street,local","viewpoint,scenery"
       ];
       const tag = tags[(dayNum - 1) % tags.length];
       const q = encodeURIComponent(destination + "," + tag);
@@ -685,6 +943,9 @@
       return "Mix of mid-range hotels, local restaurants, and a balance of paid and free activities.";
     }
 
+    /* ============================================================
+       ITINERARY RENDERING
+       ============================================================ */
     function structureItinerary(text, destination) {
       if (!text) return '<p style="color:#6b7c6a;">No itinerary generated.</p>';
 
@@ -758,7 +1019,7 @@
       return html + budgetBlock + tipsBlock;
     }
 
-    function generateOffline(fromPlace, destination, days, budget) {
+    function generateOffline(fromPlace, destination, days, budget, travelNote) {
       const name = destination.charAt(0).toUpperCase() + destination.slice(1);
       const from = fromPlace ? fromPlace.charAt(0).toUpperCase() + fromPlace.slice(1) : "";
       let html = "";
@@ -833,18 +1094,22 @@
       else budgetText = days <= 3 ? "₹6,000 – ₹12,000" : days <= 5 ? "₹10,000 – ₹20,000" : "₹18,000 – ₹35,000";
 
       html += `<div class="budget-box">Estimated total (${budgetLabel(budget)}): ${budgetText}</div>`;
+      if (travelNote) {
+        html += `<div class="tips-box">${travelNote}</div>`;
+      }
       return { html, budget: budgetText, badge: "Offline Plan" };
     }
 
-    async function callGroq(fromPlace, destination, days, budget, apiKey) {
+    async function callGroq(fromPlace, destination, days, budget, apiKey, travelNote) {
       const fromLine = fromPlace ? `Starting from: ${fromPlace}` : "Starting point: not specified";
+      const extra = travelNote ? `\nIMPORTANT: ${travelNote}\n` : "";
       const prompt = `You are an expert travel planner. Create a practical day-by-day itinerary.
 
 ${fromLine}
 Destination: ${destination}
 Days: ${days}
 Budget level: ${budgetLabel(budget)}
-Budget guidance: ${budgetHint(budget)}
+Budget guidance: ${budgetHint(budget)}${extra}
 
 Rules:
 - Use clear headings exactly like: Day 1 – Title
@@ -876,15 +1141,16 @@ Rules:
       return data.choices?.[0]?.message?.content || "No response";
     }
 
-    async function callGemini(fromPlace, destination, days, budget, apiKey) {
+    async function callGemini(fromPlace, destination, days, budget, apiKey, travelNote) {
       const fromLine = fromPlace ? `Starting from: ${fromPlace}` : "Starting point: not specified";
+      const extra = travelNote ? `\nIMPORTANT: ${travelNote}\n` : "";
       const prompt = `You are an expert travel planner. Create a practical day-by-day itinerary.
 
 ${fromLine}
 Destination: ${destination}
 Days: ${days}
 Budget level: ${budgetLabel(budget)}
-Budget guidance: ${budgetHint(budget)}
+Budget guidance: ${budgetHint(budget)}${extra}
 
 Rules:
 - Use clear headings exactly like: Day 1 – Title
@@ -914,7 +1180,10 @@ Rules:
       return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
     }
 
-    async function searchTrip() {
+    /* ============================================================
+       MAIN SEARCH
+       ============================================================ */
+    async function searchTrip(forceContinue = false) {
       const fromPlace = document.getElementById("fromPlace").value.trim();
       const destination = document.getElementById("destination").value.trim();
       const days = parseInt(document.getElementById("days").value);
@@ -926,6 +1195,35 @@ Rules:
         return;
       }
 
+      showLoading("Checking your trip…");
+
+      // ---- Resolve coordinates if not cached ----
+      try {
+        if (!fromCoords && fromPlace) {
+          fromCoords = await resolveCoords(fromPlace);
+        }
+        if (!destCoords && destination) {
+          destCoords = await resolveCoords(destination);
+        }
+      } catch (e) {
+        console.warn("Geocoding issue:", e);
+      }
+
+      // ---- Feasibility check ----
+      let travelNote = "";
+      if (!forceContinue && fromCoords && destCoords) {
+        const distanceKm = haversineKm(fromCoords, destCoords);
+        const info = checkFeasibility(distanceKm, days);
+        if (!info.feasible) {
+          hideLoading();
+          renderFeasibilityWarning(info, () => searchTrip(true));
+          return;
+        } else if (distanceKm != null) {
+          const travelDays = (distanceKm / KM_PER_TRAVEL_DAY) * 2;
+          travelNote = `Round-trip travel ≈ ${Math.round(distanceKm).toLocaleString()} km (~${travelDays.toFixed(1)} day(s) of travel). Plan sightseeing only for the remaining days.`;
+        }
+      }
+
       showLoading(provider === "offline" ? "Creating plan..." : "Asking AI...");
 
       try {
@@ -934,7 +1232,7 @@ Rules:
         let budgetNote = "";
 
         if (provider === "offline") {
-          const offline = generateOffline(fromPlace, destination, days, budget);
+          const offline = generateOffline(fromPlace, destination, days, budget, travelNote);
           resultHtml = offline.html;
           badge = offline.badge;
           budgetNote = offline.budget;
@@ -953,10 +1251,10 @@ Rules:
 
           let aiText = "";
           if (provider === "groq") {
-            aiText = await callGroq(fromPlace, destination, days, budget, key);
+            aiText = await callGroq(fromPlace, destination, days, budget, key, travelNote);
             badge = "Groq AI";
           } else {
-            aiText = await callGemini(fromPlace, destination, days, budget, key);
+            aiText = await callGemini(fromPlace, destination, days, budget, key, travelNote);
             badge = "Gemini AI";
           }
 
@@ -967,8 +1265,6 @@ Rules:
         const q = encodeURIComponent(destination);
         const imgUrl = destinationImageUrl(destination);
         const title = (fromPlace ? fromPlace + " → " : "") + destination;
-
-        // Direction URL helper is defined at top (directionsUrl) and uses exact GPS coords
 
         let html = `
           <div class="card">
