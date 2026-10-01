@@ -72,7 +72,6 @@
     }
     .main-btn:active { opacity: 0.88; }
 
-    /* Budget buttons */
     .budget-label {
       font-size: 0.8rem;
       opacity: 0.95;
@@ -283,7 +282,7 @@
     }
     .btn-map { background: var(--sage); }
     .btn-num { background: #4a7c9b; }
-    .btn-dir { background: #9b6b4a; }  /* new direction button color */
+    .btn-dir { background: #9b6b4a; }
 
     .ai-badge {
       display: inline-block;
@@ -336,7 +335,6 @@
     }
     .footer .love { margin-top: 10px; font-size: 0.78rem; color: #9aab98; }
 
-    /* Location button */
     .loc-btn {
       background: rgba(44, 62, 45, 0.85);
       border: 1px solid rgba(255,255,255,0.5);
@@ -355,6 +353,22 @@
     }
     .loc-btn:active { opacity: 0.8; }
     .loc-btn small { font-weight: 400; opacity: 0.8; }
+    .loc-btn:disabled { opacity: 0.6; cursor: wait; }
+
+    .coord-badge {
+      font-size: 0.7rem;
+      background: rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 10px;
+      padding: 7px 10px;
+      margin-top: 4px;
+      color: white;
+      display: none;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .coord-badge.show { display: block; }
+    .coord-badge b { color: #ffe9a8; }
   </style>
 </head>
 <body>
@@ -384,9 +398,10 @@
       </div>
 
       <input type="text" id="fromPlace" placeholder="From where? (e.g. Kolkata, Delhi, Mumbai...)" autocomplete="off" />
-      <button type="button" class="loc-btn" onclick="detectLocation()">
+      <button type="button" class="loc-btn" id="locBtn" onclick="detectLocation()">
         📍 Use my current location <small>(auto-fill From)</small>
       </button>
+      <div class="coord-badge" id="coordBadge"></div>
 
       <input type="text" id="destination" placeholder="Where to go? (e.g. Manali, Paris, Bali...)" autocomplete="off" />
 
@@ -450,7 +465,7 @@
     <div class="empty" id="emptyState">
       <p style="margin-bottom:8px;"><strong>How to use</strong></p>
       <p style="font-size:0.88rem;line-height:1.55;">
-        1. Enter From &amp; To<br>
+        1. Enter From &amp; To (or tap 📍 to auto-fill From)<br>
         2. Choose budget (Cheap / Medium / Premium)<br>
         3. Select days → Plan My Trip
       </p>
@@ -466,12 +481,13 @@
   </div>
 
   <script>
-    // Default Groq key (provided by owner)
     const DEFAULT_GROQ_KEY = "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";
 
     let selectedBudget = "medium";
+    // Store precise coordinates separately from the display text
     let currentLat = null;
     let currentLon = null;
+    let currentAccuracy = null;
 
     function selectBudget(btn) {
       document.querySelectorAll(".budget-btn").forEach(b => b.classList.remove("active"));
@@ -494,47 +510,86 @@
       return localStorage.getItem("groq_api_key") || DEFAULT_GROQ_KEY;
     }
 
-    // --- Location detection ---
+    // ---------- PRECISE LOCATION CAPTURE ----------
     function detectLocation() {
       if (!navigator.geolocation) {
         alert("Geolocation is not supported by your browser");
         return;
       }
-      const btn = document.querySelector('.loc-btn');
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '⏳ Detecting…';
+
+      const btn = document.getElementById('locBtn');
+      const badge = document.getElementById('coordBadge');
+      const originalHtml = btn.innerHTML;
+
+      btn.innerHTML = '⏳ Getting precise location…';
       btn.disabled = true;
+      badge.classList.remove('show');
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          // Capture exact coordinates (full precision)
           currentLat = position.coords.latitude;
           currentLon = position.coords.longitude;
+          currentAccuracy = position.coords.accuracy;
+
+          // Always show the exact coordinates badge
+          badge.innerHTML =
+            `📌 <b>Lat:</b> ${currentLat.toFixed(6)} &nbsp; <b>Lon:</b> ${currentLon.toFixed(6)}` +
+            `<br>🎯 Accuracy: ~${Math.round(currentAccuracy)} m`;
+          badge.classList.add('show');
+
+          // Try reverse geocode for a friendly name in the From field
+          let displayName = `${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`;
           try {
-            // Reverse geocode using open API (BigDataCloud free, no key)
             const res = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLat}&longitude=${currentLon}&localityLanguage=en`
             );
             const data = await res.json();
-            // Use city/locality or fallback to lat,lon
-            let place = data.city || data.locality || data.principalSubdivision || '';
-            if (place) {
-              document.getElementById('fromPlace').value = place;
-            } else {
-              document.getElementById('fromPlace').value = currentLat.toFixed(4) + ', ' + currentLon.toFixed(4);
+            const parts = [];
+            if (data.locality) parts.push(data.locality);
+            else if (data.city) parts.push(data.city);
+            if (data.principalSubdivision && data.principalSubdivision !== data.city) {
+              parts.push(data.principalSubdivision);
+            }
+            if (parts.length > 0) {
+              displayName = parts.join(', ');
             }
           } catch (e) {
-            document.getElementById('fromPlace').value = currentLat.toFixed(4) + ', ' + currentLon.toFixed(4);
+            // keep coordinate fallback
           }
-          btn.innerHTML = originalText;
+
+          // Put the friendly name (or coords) in the input.
+          // IMPORTANT: directions still use exact currentLat/currentLon.
+          document.getElementById('fromPlace').value = displayName;
+
+          btn.innerHTML = originalHtml;
           btn.disabled = false;
         },
         (error) => {
-          alert("Unable to get location: " + error.message);
-          btn.innerHTML = originalText;
+          let msg = "Unable to get location.";
+          if (error.code === 1) msg = "Location permission denied. Please allow location access in your browser settings.";
+          else if (error.code === 2) msg = "Location unavailable. Please check GPS / network.";
+          else if (error.code === 3) msg = "Location request timed out. Try again.";
+          alert(msg);
+          btn.innerHTML = originalHtml;
           btn.disabled = false;
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        {
+          enableHighAccuracy: true,   // force GPS-level precision
+          timeout: 15000,
+          maximumAge: 0               // always get fresh position
+        }
       );
+    }
+
+    // Helper: build a Google Maps directions URL that uses exact GPS if available
+    function directionsUrl(destinationQuery) {
+      if (currentLat !== null && currentLon !== null) {
+        // Use precise coordinates as the origin
+        return `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLon}&destination=${encodeURIComponent(destinationQuery)}&travelmode=driving`;
+      }
+      // No location yet → let Google Maps use the user's current location
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationQuery)}&travelmode=driving`;
     }
 
     function onProviderChange() {
@@ -666,7 +721,6 @@
         let body = firstLineEnd > -1 ? chunk.slice(firstLineEnd).trim() : "";
         const title = indices[i].title;
 
-        // Day number for image
         const dayNumMatch = title.match(/Day\s*(\d+)/i);
         const dayNum = dayNumMatch ? parseInt(dayNumMatch[1]) : (i + 1);
         const imgSrc = dayImageUrl(destination, dayNum);
@@ -914,10 +968,7 @@ Rules:
         const imgUrl = destinationImageUrl(destination);
         const title = (fromPlace ? fromPlace + " → " : "") + destination;
 
-        // Direction base: uses current location if available, else destination only
-        const dirBase = currentLat && currentLon
-          ? `https://www.google.com/maps/dir/${currentLat},${currentLon}/`
-          : `https://www.google.com/maps/dir//`;
+        // Direction URL helper is defined at top (directionsUrl) and uses exact GPS coords
 
         let html = `
           <div class="card">
@@ -938,13 +989,13 @@ Rules:
 
           <div class="card local-section">
             <h3>📞 Important Local Places</h3>
-            <p class="local-note">Map = location · Number = phone · Dir = directions from you</p>
+            <p class="local-note">Map = location · Dir = directions from you · Num = phone</p>
 
             <div class="local-item">
               <div class="info"><div class="name">Bike / Scooter Rental</div><div class="type">Two-wheeler hire</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+bike+rental" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+bike+rental" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' bike rental')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+bike+rental+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -952,7 +1003,7 @@ Rules:
               <div class="info"><div class="name">Cheap Hotels / Hostels</div><div class="type">Budget stays</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+cheap+hotel" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+cheap+hotel" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' cheap hotel')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+cheap+hotel+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -960,7 +1011,7 @@ Rules:
               <div class="info"><div class="name">Medicine Shop</div><div class="type">Pharmacy</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+pharmacy" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+pharmacy" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' pharmacy')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+pharmacy+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -968,7 +1019,7 @@ Rules:
               <div class="info"><div class="name">Local Market</div><div class="type">Shopping</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+local+market" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+local+market" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' local market')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+local+market+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -976,7 +1027,7 @@ Rules:
               <div class="info"><div class="name">Good Food Places</div><div class="type">Restaurants</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+best+restaurants" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+best+restaurants" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' best restaurants')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+restaurant+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -984,7 +1035,7 @@ Rules:
               <div class="info"><div class="name">Petrol Pump</div><div class="type">Fuel stations</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+petrol+pump" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+petrol+pump" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' petrol pump')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+petrol+pump+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -992,7 +1043,7 @@ Rules:
               <div class="info"><div class="name">Police Station</div><div class="type">Emergency</div></div>
               <div class="local-btns">
                 <a class="btn-map" href="${mapsBase}${q}+police+station" target="_blank">Map</a>
-                <a class="btn-dir" href="${dirBase}${q}+police+station" target="_blank">Dir</a>
+                <a class="btn-dir" href="${directionsUrl(destination + ' police station')}" target="_blank">Dir</a>
                 <a class="btn-num" href="https://www.google.com/search?q=${q}+police+station+phone+number" target="_blank">Num</a>
               </div>
             </div>
@@ -1018,7 +1069,6 @@ Rules:
       }
     }
 
-    // Init: set default Groq key
     if (!localStorage.getItem("groq_api_key")) {
       localStorage.setItem("groq_api_key", DEFAULT_GROQ_KEY);
     }
